@@ -14,6 +14,7 @@
 *******************************************************************************/
 
 
+using System;
 using System.Collections.Generic;
 
 namespace Clipper2Lib
@@ -68,9 +69,11 @@ namespace Clipper2Lib
       return BooleanOp(ClipType.Xor, fillRule, subject, clip);
     }
 
-    public static Paths64? BooleanOp(ClipType clipType, FillRule fillRule, Paths64 subject, Paths64 clip)
+    public static Paths64 BooleanOp(ClipType clipType, FillRule fillRule, Paths64 subject, Paths64? clip)
     {
-      if (subject == null) return null;
+      if (subject == null) 
+        throw new ArgumentNullException(nameof(subject));
+
       Paths64 solution = new Paths64();
       Clipper c = new Clipper();
       c.AddPaths(subject, PathType.Subject);
@@ -83,6 +86,9 @@ namespace Clipper2Lib
     public static PathsD BooleanOp(ClipType clipType, FillRule fillRule,
         PathsD subject, PathsD clip, int roundingDecimalPrecision = 2)
     {
+      if (subject == null)
+        throw new ArgumentNullException(nameof(subject));
+
       PathsD solution = new PathsD();
       ClipperD c = new ClipperD(roundingDecimalPrecision);
       c.AddSubject(subject);

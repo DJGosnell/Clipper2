@@ -166,8 +166,8 @@ namespace Clipper2Lib
   {
     private ClipType _cliptype;
     private FillRule _fillrule;
-    private Active _actives;
-    private Active _sel;
+    private Active? _actives;
+    private Active? _sel;
     private OutPt _horzFirst;
     private OutPt _horzLast;
     private readonly List<LocalMinima> _minimaList;
@@ -265,9 +265,9 @@ namespace Clipper2Lib
              (ae.vertexTop.flags & (VertexFlags.OpenStart | VertexFlags.OpenEnd)) != VertexFlags.None;
     }
 
-    static Active GetPrevHotEdge(Active ae)
+    private static Active? GetPrevHotEdge(Active ae)
     {
-      Active prev = ae.prevInAEL;
+      Active? prev = ae.prevInAEL;
       while (prev != null && (IsOpen(prev) || !IsHotEdge(prev)))
         prev = prev.prevInAEL;
       return prev;
@@ -288,7 +288,7 @@ namespace Clipper2Lib
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     static bool IsInner(OutRec outrec)
     {
-      return (outrec.state == OutRecState.Inner);
+      return outrec.state == OutRecState.Inner;
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -549,7 +549,7 @@ namespace Clipper2Lib
       ae2.outrec = or1;
     }
 
-    static double Area(OutPt op)
+    private static double Area(OutPt? op)
     {
       if (op == null) return 0.0;
       double area = 0.0;
@@ -563,7 +563,7 @@ namespace Clipper2Lib
       return area * 0.5;
     }
 
-    static void ReverseOutPts(OutPt op)
+    private static void ReverseOutPts(OutPt? op)
     {
       if (op == null) return;
 
@@ -581,10 +581,13 @@ namespace Clipper2Lib
 
     private void CheckFixInnerOuter(Active ae)
     {
-      bool wasOuter = IsOuter(ae.outrec);
+      if (ae.outrec == null) 
+        throw new ArgumentNullException(nameof(ae.outrec));
+
+      bool wasOuter = IsOuter(ae.outrec!);
       bool isOuter = true;
 
-      Active ae2 = ae.prevInAEL;
+      Active? ae2 = ae.prevInAEL;
       while (ae2 != null)
       {
         if (IsHotEdge(ae2) && !IsOpen(ae2)) isOuter = !isOuter;
@@ -602,7 +605,7 @@ namespace Clipper2Lib
       ae2 = GetPrevHotEdge(ae);
       if (isOuter)
       {
-        if (ae2 != null && IsInner(ae2.outrec))
+        if (ae2 != null && IsInner(ae2.outrec!))
           ae.outrec.owner = ae2.outrec;
         else
           ae.outrec.owner = null;
@@ -611,8 +614,8 @@ namespace Clipper2Lib
       {
         if (ae2 == null)
           SetAsOuter(ae.outrec);
-        else if (IsInner(ae2.outrec))
-          ae.outrec.owner = ae2.outrec.owner;
+        else if (IsInner(ae2.outrec!))
+          ae.outrec.owner = ae2.outrec!.owner;
         else
           ae.outrec.owner = ae2.outrec;
       }
@@ -624,10 +627,10 @@ namespace Clipper2Lib
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private static void UncoupleOutRec(Active ae)
     {
+      if (ae.outrec == null) return;
       OutRec outrec = ae.outrec;
-      if (outrec == null) return;
-      outrec.frontEdge.outrec = null;
-      outrec.backEdge.outrec = null;
+      outrec.frontEdge!.outrec = null;
+      outrec.backEdge!.outrec = null;
       outrec.frontEdge = null;
       outrec.backEdge = null;
     }
@@ -635,15 +638,15 @@ namespace Clipper2Lib
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private static void SwapSides(OutRec outrec)
     {
-      Active ae2 = outrec.frontEdge;
+      Active ae2 = outrec.frontEdge!;
       outrec.frontEdge = outrec.backEdge;
       outrec.backEdge = ae2;
-      outrec.pts = outrec.pts.next;
+      outrec.pts = outrec.pts!.next;
     }
 
     private bool FixSides(Active ae)
     {
-      if (ValidateOrDeleteClosedPath(ref ae.outrec.pts))
+      if (ValidateOrDeleteClosedPath(ref ae.outrec!.pts))
       {
         CheckFixInnerOuter(ae);
         if (IsOuter(ae.outrec) == IsFront(ae))
@@ -658,8 +661,8 @@ namespace Clipper2Lib
 
     private void SetOwnerAndInnerOuterState(Active ae)
     {
-      Active ae2;
-      OutRec outrec = ae.outrec;
+      Active? ae2;
+      OutRec outrec = ae.outrec!;
 
       if (IsOpen(ae))
       {
@@ -676,7 +679,7 @@ namespace Clipper2Lib
           ae2 = ae2.nextInAEL;
         if (ae2 == null)
           outrec.owner = null;
-        else if ((ae2.outrec.state == OutRecState.Outer) == (ae2.outrec.frontEdge == ae2))
+        else if ((ae2.outrec!.state == OutRecState.Outer) == (ae2.outrec.frontEdge == ae2))
           outrec.owner = ae2.outrec.owner;
         else
           outrec.owner = ae2.outrec;
@@ -688,7 +691,7 @@ namespace Clipper2Lib
           ae2 = ae2.prevInAEL;
         if (ae2 == null)
           outrec.owner = null;
-        else if (IsOuter(ae2.outrec) == (ae2.outrec.backEdge == ae2))
+        else if (ae2.outrec != null && IsOuter(ae2.outrec) == (ae2.outrec.backEdge == ae2))
           outrec.owner = ae2.outrec.owner;
         else
           outrec.owner = ae2.outrec;
@@ -1905,7 +1908,7 @@ namespace Clipper2Lib
 
     private Active ExtractFromSEL(Active ae)
     {
-      Active res = ae.nextInSEL;
+      Active? res = ae.nextInSEL;
       if (res != null)
         res.prevInSEL = ae.prevInSEL;
       if (ae.prevInSEL != null)
@@ -1935,9 +1938,10 @@ namespace Clipper2Lib
       //stored in FIntersectList ready to be processed in ProcessIntersectList.
       //Re merge sorts see https://stackoverflow.com/a/46319131/359538
 
-      Active left = _sel, right, lEnd, rEnd, currBase, prevBase, tmp;
+      Active? right, lEnd, rEnd, currBase, prevBase;
+      Active left = _sel!;
 
-      while (left.jump != null)
+      while (left?.jump != null)
       {
         prevBase = null;
         while (left != null && left.jump != null)
@@ -1949,9 +1953,9 @@ namespace Clipper2Lib
           left.jump = rEnd;
           while (left != lEnd && right != rEnd)
           {
-            if (right.curX < left.curX)
+            if (right.curX < left!.curX)
             {
-              tmp = right.prevInSEL;
+              Active tmp = right.prevInSEL;
               for (; ; )
               {
                 AddNewIntersectNode(tmp, right, topY);
@@ -2314,9 +2318,9 @@ namespace Clipper2Lib
       }
     }
 
-    private Active DoMaxima(Active ae)
+    private Active? DoMaxima(Active ae)
     {
-      Active nextE, prevE, maxPair;
+      Active? nextE, prevE, maxPair;
       prevE = ae.prevInAEL;
       nextE = ae.nextInAEL;
       if (IsOpenEnd(ae))
@@ -2331,18 +2335,17 @@ namespace Clipper2Lib
 
         return nextE;
       }
-      else
-      {
-        maxPair = GetMaximaPair(ae);
-        if (maxPair == null) return nextE; //eMaxPair is horizontal
-      }
+
+      maxPair = GetMaximaPair(ae);
+      if (maxPair == null) return nextE; //eMaxPair is horizontal
+
 
       //only non-horizontal maxima here.
       //process any edges between maxima pair ...
       while (nextE != maxPair)
       {
-        IntersectEdges(ae, nextE, ae.top);
-        SwapPositionsInAEL(ae, nextE);
+        IntersectEdges(ae, nextE!, ae.top);
+        SwapPositionsInAEL(ae, nextE!);
         nextE = ae.nextInAEL;
       }
 
@@ -2353,7 +2356,7 @@ namespace Clipper2Lib
           if (maxPair != null)
             AddLocalMaxPoly(ae, maxPair, ae.top);
           else
-            AddOutPt(ae, ae.top);
+            AddOutPt(ae, ae.top); // TODO: Review what to do about this non-executing line.
         }
 
         if (maxPair != null) DeleteFromAEL(maxPair);
